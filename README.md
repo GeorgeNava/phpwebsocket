@@ -54,3 +54,13 @@ Steps to run the test:
 
 WebSockets for the masses!
 ==========================
+
+Author
+======
+George Nava
+
+[http://georgenava.appspot.com/]
+
+[http://mylittlehacks.appspot.com/]
+
+[http://twitter.com/georgenava]

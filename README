@@ -7,7 +7,7 @@ Get the developers release from here [Google Chrome Dev Channel](http://www.chro
 Hurry up Firefox and Safari, you're late to the party!
 
 Client side
-===========
+-----------
 
 	var host = "ws://localhost:12345/websocket/server.php";
 	try{
@@ -23,7 +23,7 @@ View source in client.php
 
 
 Server side
-===========
+-----------
 
 	log("Handshaking...");
 	list($resource,$host,$origin) = getheaders($buffer);
@@ -39,7 +39,7 @@ Server side
 View source code in server.php
 
 Steps to run the test:
-======================
+----------------------
 
 * Save both files, client.php and server.php, in a folder in your local server running Apache and PHP.
 * From the command line, run the server.php program to listen for socket connections.

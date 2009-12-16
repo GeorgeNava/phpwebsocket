@@ -2,8 +2,11 @@ PHPWEBSOCKET
 ============
 
 So here is a quick hack to implement websockets in php.
+
 As of Dec/09 the only browser that supports websockets is Google Chrome.
+
 Get the developers release from here [Google Chrome Dev Channel](http://www.chromium.org/getting-involved/dev-channel)
+
 Hurry up Firefox and Safari, you're late to the party!
 
 Client side
@@ -41,12 +44,13 @@ View source code of [server.php](http://github.com/GeorgeNava/phpwebsocket/blob/
 Steps to run the test:
 ----------------------
 
-* Save both files, client.php and server.php, in a folder in your local server running Apache and PHP.
+* Save both files, client.html and server.php, in a folder in your local server running Apache and PHP.
 * From the command line, run the server.php program to listen for socket connections.
-* Open Google Chrome (dev build) and point to the client.php page
+* Open Google Chrome (dev build) and point to the client.html page
 * Done, your browser now has a full-duplex channel with the server.
 * Start sending commands to the server to get some responses.
-* 2010 will be an interesting year.
+
+2010 will be an interesting year.
 
 WebSockets for the masses!
 ==========================

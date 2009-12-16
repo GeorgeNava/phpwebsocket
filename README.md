@@ -59,8 +59,8 @@ Author
 ======
 George Nava
 
-[http://georgenava.appspot.com/]
+[http://georgenava.appspot.com](http://georgenava.appspot.com)
 
-[http://mylittlehacks.appspot.com/]
+[http://mylittlehacks.appspot.com](http://mylittlehacks.appspot.com)
 
-[http://twitter.com/georgenava]
+[http://twitter.com/georgenava](http://twitter.com/georgenava)

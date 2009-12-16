@@ -19,7 +19,7 @@ Client side
 	}
 	catch(ex){ log(ex); }
 
-View source in client.php
+View source code of [client.html](http://github.com/GeorgeNava/phpwebsocket/blob/master/client.html)
 
 
 Server side
@@ -36,7 +36,7 @@ Server side
 	$handshake = true;
 	socket_write($socket,$upgrade.chr(0),strlen($upgrade.chr(0)));
 
-View source code in server.php
+View source code of [server.php](http://github.com/GeorgeNava/phpwebsocket/blob/master/server.php)
 
 Steps to run the test:
 ----------------------

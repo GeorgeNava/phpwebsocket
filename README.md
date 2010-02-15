@@ -9,6 +9,11 @@ Get the developers release from here [Google Chrome Dev Channel](http://www.chro
 
 Hurry up Firefox and Safari, you're late to the party!
 
+Changelog
+---------
+* 20100215 - Added Users list to keep track of handshakes
+* 20100215 - Minor cosmetic changes
+
 Client side
 -----------
 
@@ -56,7 +61,7 @@ WebSockets for the masses!
 ==========================
 
 Author
-======
+------
 George Nava
 
 [http://georgenava.appspot.com](http://georgenava.appspot.com)

@@ -1,14 +1,14 @@
 PHPWEBSOCKET
 ============
 
-So here is a quick hack to implement websockets in php.
+So here is a quick hack to implement websockets in php.  
 As of Feb/10 the only browsers that support websockets are [Google Chrome](http://www.google.com/chrome) and [Safari nightlies](http://nightly.webkit.org/)
 
 
 Changelog
 ---------
-* 20100215 - Added Users list to keep track of handshakes
-* 20100215 - Minor cosmetic changes
+* 2010.02.15 - Added Users list to keep track of handshakes
+* 2010.02.15 - Minor cosmetic changes
 
 Client side
 -----------

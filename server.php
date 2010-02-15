@@ -1,124 +1,120 @@
 #!/php -q
-<?php
-/* 
-
-Run from command line:
-> php -q server.php
-
-*/
-
+<?php  /*  >php -q server.php  */
 error_reporting(E_ALL);
 set_time_limit(0);
 ob_implicit_flush();
 
-echo "Initiating...\n";
-$address = 'localhost';
-$port    = 12345;
-$maxconn = 999;
-$uselog  = true;
-   
-$master = socket_create(AF_INET, SOCK_STREAM, SOL_TCP) or die("socket_create() failed");
-socket_set_option($master, SOL_SOCKET, SO_REUSEADDR, 1);
-socket_bind($master, $address, $port) or die("socket_bind() failed");
-socket_listen($master,20)             or die("socket_listen() failed");
-
-echo "Server Started : ".date('Y-m-d H:i:s')."\n";
-echo "Max connections: ".$maxconn."\n";
-echo "Master socket  : ".$master."\n";
-echo "Listening on   : ".$address." port ".$port."\n";
-
-$users     = array();
-$sockets   = array($master);
-$handshake = false;
+$master  = WebSocket("localhost",12345);
+$sockets = array($master);
+$users   = array();
+$debug   = false;
 
 while(true){
-  $readsockets = $sockets;
-  $numsockets = socket_select($readsockets,$write=NULL,$except=NULL,NULL);
-  foreach($readsockets as $socket){
-    console();
-    if ($socket==$master) {
-      if(($client=socket_accept($master))<0) {
-        console("socket_accept() failed: reason: ".socket_strerror(socket_last_error($client)));
-        continue;
-      }
-      else{
-        array_push($sockets,$client);
-        console($client." CONNECTED!");
-      }
+  $changed = $sockets;
+  socket_select($changed,$write=NULL,$except=NULL,NULL);
+  foreach($changed as $socket){
+    if($socket==$master){
+      $client=socket_accept($master);
+      if($client<0){ console("socket_accept() failed"); continue; }
+      else{ connect($client); }
     }
     else{
       $bytes = @socket_recv($socket,$buffer,2048,0);
-      if($bytes==0){ disconnected($socket); }
+      if($bytes==0){ disconnect($socket); }
       else{
-        
-         /* TODO: store handshake per socket */
-        if(!$handshake){
-          console("\nRequesting handshake...");
-          console($buffer);
-          /*        
-            GET {resource} HTTP/1.1
-            Upgrade: WebSocket
-            Connection: Upgrade
-            Host: {host}
-            Origin: {origin}
-            \r\n
-          */
-          list($resource,$host,$origin) = getheaders($buffer);
-          //$resource = "/websocket/server.php";
-          //$host     = "localhost:12345";
-          //$origin   = "http://localhost";
-          console("Handshaking...");
-          $upgrade  = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
-                      "Upgrade: WebSocket\r\n" .
-                      "Connection: Upgrade\r\n" .
-                      "WebSocket-Origin: " . $origin . "\r\n" .
-                      "WebSocket-Location: ws://" . $host . $resource . "\r\n" .
-                      "\r\n";
-          $handshake = true;
-          socket_write($client,$upgrade.chr(0),strlen($upgrade.chr(0)));
-          console($upgrade);
-          console("Done handshaking...");
-        }
-        else{
-          console("<".$buffer);
-          $action = substr($buffer,1,$bytes-2); // remove chr(0) and chr(255)
-          switch($action){
-            case "hello" : send($socket,"hello human"); break;
-            case "hi"    : send($socket,"zup human"); break;
-            case "name"  : send($socket,"my name is Multivac, silly I know"); break;
-            case "age"   : send($socket,"I am older than time itself"); break;
-            case "date"  : send($socket,"today is ".date("Y.m.d")); break;
-            case "time"  : send($socket,"server time is ".date("H:i:s")); break;
-            case "thanks": send($socket,"you're welcome"); break;
-            case "bye"   : send($socket,"bye"); break;
-            default      : send($socket,$action." not understood"); break;
-          }
-        }
+        $user = getuserbysocket($socket);
+        if(!$user->handshake){ dohandshake($user,$buffer); }
+        else{ process($user,$buffer); }
       }
     }
   }
 }
 
 //---------------------------------------------------------------
-function wrap($msg){ return chr(0).$msg.chr(255); }
+function process($user,$msg){
+  $action = unwrap($msg);
+  say("< ".$action);
+  switch($action){
+    case "hello" : send($user->socket,"hello human");                       break;
+    case "hi"    : send($user->socket,"zup human");                         break;
+    case "name"  : send($user->socket,"my name is Multivac, silly I know"); break;
+    case "age"   : send($user->socket,"I am older than time itself");       break;
+    case "date"  : send($user->socket,"today is ".date("Y.m.d"));           break;
+    case "time"  : send($user->socket,"server time is ".date("H:i:s"));     break;
+    case "thanks": send($user->socket,"you're welcome");                    break;
+    case "bye"   : send($user->socket,"bye");                               break;
+    default      : send($user->socket,$action." not understood");           break;
+  }
+}
 
 function send($client,$msg){ 
-  console("> ".$msg);
+  say("> ".$msg);
   $msg = wrap($msg);
   socket_write($client,$msg,strlen($msg));
 } 
 
-function disconnected($socket){
-  global $sockets;
-  $index = array_search($socket, $sockets);
-  if($index>=0){ unset($sockets[$index]); }
-  socket_close($socket);
-  console($socket." disconnected!");
+function WebSocket($address,$port){
+  $master=socket_create(AF_INET, SOCK_STREAM, SOL_TCP)     or die("socket_create() failed");
+  socket_set_option($master, SOL_SOCKET, SO_REUSEADDR, 1)  or die("socket_option() failed");
+  socket_bind($master, $address, $port)                    or die("socket_bind() failed");
+  socket_listen($master,20)                                or die("socket_listen() failed");
+  echo "Server Started : ".date('Y-m-d H:i:s')."\n";
+  echo "Master socket  : ".$master."\n";
+  echo "Listening on   : ".$address." port ".$port."\n\n";
+  return $master;
 }
 
-function console($msg=""){
-  global $uselog;
-  if($uselog){ echo $msg."\n"; }
+function connect($socket){
+  global $sockets,$users;
+  $user = new User();
+  $user->id = uniqid();
+  $user->socket = $socket;
+  array_push($users,$user);
+  array_push($sockets,$socket);
+  console($socket." CONNECTED!");
+}
+
+function disconnect($socket){
+  global $sockets,$users;
+  $found=null;
+  $n=count($users);
+  for($i=0;$i<$n;$i++){
+    if($users[$i]->socket==$socket){ $found=$i; break; }
+  }
+  if(!is_null($found)){ array_splice($users,$found,1); }
+  $index = array_search($socket,$sockets);
+  socket_close($socket);
+  console($socket." DISCONNECTED!");
+  if($index>=0){ array_splice($sockets,$index,1); }
+}
+
+function dohandshake($user,$buffer){
+  console("\nRequesting handshake...");
+  console($buffer);
+  /*        
+    GET {resource} HTTP/1.1
+    Upgrade: WebSocket
+    Connection: Upgrade
+    Host: {host}
+    Origin: {origin}
+    \r\n
+  */
+  list($resource,$host,$origin) = getheaders($buffer);
+  //$resource = "/phpwebsocketchat/server.php";
+  //$host     = "localhost:12345";
+  //$origin   = "http://localhost";
+  console("Handshaking...");
+  $upgrade  = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
+              "Upgrade: WebSocket\r\n" .
+              "Connection: Upgrade\r\n" .
+              "WebSocket-Origin: " . $origin . "\r\n" .
+              "WebSocket-Location: ws://" . $host . $resource . "\r\n" .
+              "\r\n";
+  socket_write($user->socket,$upgrade.chr(0),strlen($upgrade.chr(0)));
+  $user->handshake=true;
+  console($upgrade);
+  console("Done handshaking...");
+  return true;
 }
 
 function getheaders($req){
@@ -130,4 +126,25 @@ function getheaders($req){
   $ori  = substr($req,0,strpos($req,"\r\n"));
   return array($res,$host,$ori);
 }
+
+function getuserbysocket($socket){
+  global $users;
+  $found=null;
+  foreach($users as $user){
+    if($user->socket==$socket){ $found=$user; break; }
+  }
+  return $found;
+}
+
+function     say($msg=""){ echo $msg."\n"; }
+function    wrap($msg=""){ return chr(0).$msg.chr(255); }
+function  unwrap($msg=""){ return substr($msg,1,strlen($msg)-2); }
+function console($msg=""){ global $debug; if($debug){ echo $msg."\n"; } }
+
+class User{
+  var $id;
+  var $socket;
+  var $handshake;
+}
+
 ?>

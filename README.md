@@ -7,6 +7,8 @@ As of Feb/10 the only browsers that support websockets are [Google Chrome](http:
 
 Changelog
 ---------
+* 2010.02.18 - Chatbot demo extending websocket class
+* 2010.02.18 - Websocket class for better reuse
 * 2010.02.15 - Added Users list to keep track of handshakes
 * 2010.02.15 - Minor cosmetic changes
 

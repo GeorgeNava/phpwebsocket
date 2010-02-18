@@ -19,8 +19,8 @@ class WebSocket{
     socket_set_option($this->master, SOL_SOCKET, SO_REUSEADDR, 1)  or die("socket_option() failed");
     socket_bind($this->master, $address, $port)                    or die("socket_bind() failed");
     socket_listen($this->master,20)                                or die("socket_listen() failed");
-    $this->say("---------------\n");
     $this->sockets[] = $this->master;
+    $this->say("---------------\n");
     $this->say("Server Started : ".date('Y-m-d H:i:s'));
     $this->say("Listening on   : ".$address." port ".$port);
     $this->say("Master socket  : ".$this->master);

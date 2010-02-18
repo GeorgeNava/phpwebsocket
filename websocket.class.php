@@ -1,6 +1,8 @@
 <?php  
 
-// Usage: $ws = new WebSocket("localhost",12345);
+// Usage: 
+//  $ws = new WebSocket("localhost",12345);
+//  $ws->listen();
 
 class WebSocket{
   var $master;
@@ -17,11 +19,15 @@ class WebSocket{
     socket_set_option($this->master, SOL_SOCKET, SO_REUSEADDR, 1)  or die("socket_option() failed");
     socket_bind($this->master, $address, $port)                    or die("socket_bind() failed");
     socket_listen($this->master,20)                                or die("socket_listen() failed");
+    $this->say("---------------\n");
     $this->sockets[] = $this->master;
     $this->say("Server Started : ".date('Y-m-d H:i:s'));
     $this->say("Listening on   : ".$address." port ".$port);
-    $this->say("Master socket  : ".$this->master."\n");
-
+    $this->say("Master socket  : ".$this->master);
+    $this->say("---------------\n");
+  }
+  
+  function listen(){
     while(true){
       $changed = $this->sockets;
       socket_select($changed,$write=NULL,$except=NULL,NULL);

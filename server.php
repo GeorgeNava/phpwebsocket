@@ -47,11 +47,11 @@ function process($user,$msg){
   }
 }
 
-function send($client,$msg){ 
+function send($client,$msg){
   say("> ".$msg);
   $msg = wrap($msg);
   socket_write($client,$msg,strlen($msg));
-} 
+}
 
 function WebSocket($address,$port){
   $master=socket_create(AF_INET, SOCK_STREAM, SOL_TCP)     or die("socket_create() failed");
@@ -91,25 +91,39 @@ function disconnect($socket){
 function dohandshake($user,$buffer){
   console("\nRequesting handshake...");
   console($buffer);
-  /*        
-    GET {resource} HTTP/1.1
-    Upgrade: WebSocket
-    Connection: Upgrade
-    Host: {host}
-    Origin: {origin}
-    \r\n
-  */
-  list($resource,$host,$origin) = getheaders($buffer);
-  //$resource = "/phpwebsocketchat/server.php";
-  //$host     = "localhost:12345";
-  //$origin   = "http://localhost";
+  list($resource,$host,$origin,$strkey1,$strkey2,$data) = getheaders($buffer);
   console("Handshaking...");
-  $upgrade  = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
+
+  $pattern = '/[^\d]*/';
+  $replacement = '';
+  $numkey1 = preg_replace($pattern, $replacement, $strkey1);
+  $numkey2 = preg_replace($pattern, $replacement, $strkey2);
+
+  $pattern = '/[^ ]*/';
+  $replacement = '';
+  $spaces1 = strlen(preg_replace($pattern, $replacement, $strkey1));
+  $spaces2 = strlen(preg_replace($pattern, $replacement, $strkey2));
+
+  if ($spaces1 == 0 || $spaces2 == 0 || $numkey1 % $spaces1 != 0 || $numkey2 % $spaces2 != 0) {
+	socket_close($user->socket);
+	console('failed');
+	return false;
+  }
+
+  $ctx = hash_init('md5');
+  hash_update($ctx, pack("N", $numkey1/$spaces1));
+  hash_update($ctx, pack("N", $numkey2/$spaces2));
+  hash_update($ctx, $data);
+  $hash_data = hash_final($ctx,true);
+
+  $upgrade  = "HTTP/1.1 101 WebSocket Protocol Handshake\r\n" .
               "Upgrade: WebSocket\r\n" .
               "Connection: Upgrade\r\n" .
-              "WebSocket-Origin: " . $origin . "\r\n" .
-              "WebSocket-Location: ws://" . $host . $resource . "\r\n" .
-              "\r\n";
+              "Sec-WebSocket-Origin: " . $origin . "\r\n" .
+              "Sec-WebSocket-Location: ws://" . $host . $resource . "\r\n" .
+              "\r\n" .
+              $hash_data;
+
   socket_write($user->socket,$upgrade.chr(0),strlen($upgrade.chr(0)));
   $user->handshake=true;
   console($upgrade);
@@ -118,13 +132,14 @@ function dohandshake($user,$buffer){
 }
 
 function getheaders($req){
-  $req  = substr($req,4); /* RegEx kill babies */
-  $res  = substr($req,0,strpos($req," HTTP"));
-  $req  = substr($req,strpos($req,"Host:")+6);
-  $host = substr($req,0,strpos($req,"\r\n"));
-  $req  = substr($req,strpos($req,"Origin:")+8);
-  $ori  = substr($req,0,strpos($req,"\r\n"));
-  return array($res,$host,$ori);
+  $r=$h=$o=null;
+  if(preg_match("/GET (.*) HTTP/"   ,$req,$match)){ $r=$match[1]; }
+  if(preg_match("/Host: (.*)\r\n/"  ,$req,$match)){ $h=$match[1]; }
+  if(preg_match("/Origin: (.*)\r\n/",$req,$match)){ $o=$match[1]; }
+  if(preg_match("/Sec-WebSocket-Key2: (.*)\r\n/",$req,$match)){ $key2=$match[1]; }
+  if(preg_match("/Sec-WebSocket-Key1: (.*)\r\n/",$req,$match)){ $key1=$match[1]; }
+  if(preg_match("/\r\n(.*?)\$/",$req,$match)){ $data=$match[1]; }
+  return array($r,$h,$o,$key1,$key2,$data);
 }
 
 function getuserbysocket($socket){

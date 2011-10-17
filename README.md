@@ -1,9 +1,9 @@
 PHPWEBSOCKET
 ============
 
-So here is a quick hack to implement hybi-10 websockets in php!
-Check out the [hybi-10 standard here](http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-10#section-4.2)
-Check [This Wikipedia Page](http://en.wikipedia.org/wiki/WebSocket#Browser_support) for suppored list of browsers.
+So here is a quick hack to implement hybi-10 websockets in php!  
+Check out the [hybi-10 standard here](http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-10#section-4.2)  
+Check [This Wikipedia Page](http://en.wikipedia.org/wiki/WebSocket#Browser_support) for suppored list of browsers.  
 
 
 Client side
@@ -39,11 +39,11 @@ Steps to run the test:
 WebSockets for the masses!
 ==========================
 
-Author
+Author  
 ------
-Ben Morse
-George Nava
+Ben Morse  
+George Nava  
 
 
-[http://portforwardpodcast.com/](http://portforwardpodcast.com/) 
+[http://portforwardpodcast.com/](http://portforwardpodcast.com/)  
 [http://twitter.com/PortFwdPodcast](http://twitter.com/PortFwdPodcast)  

@@ -6,7 +6,7 @@ class WebSocket{
   var $master;
   var $sockets = array();
   var $users   = array();
-  var $debug   = false;
+  var $debug   = true;
   
   function __construct($address,$port){
     error_reporting(E_ALL);
@@ -21,6 +21,10 @@ class WebSocket{
     $this->say("Server Started : ".date('Y-m-d H:i:s'));
     $this->say("Listening on   : ".$address." port ".$port);
     $this->say("Master socket  : ".$this->master."\n");
+    if( $this->debug )
+    {
+      $this->say("Debugging on\n");
+    }
 
     while(true){
       $changed = $this->sockets;
@@ -50,12 +54,74 @@ class WebSocket{
     $this->send($user->socket,$msg);
   }
 
-  function send($client,$msg){ 
-    $this->say("> ".$msg);
-    $msg = $this->wrap($msg);
-    socket_write($client,$msg,strlen($msg));
-    $this->say("! ".strlen($msg));
-  } 
+
+
+
+// unit test for message lengths of 124, 65535, 2^64
+// FIXME hook this up
+  function test_send($client)
+  {
+    $base = "Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";    
+    for( $i =0; $i < 10; $i++ )
+    {
+      $this->send($client,$base);
+      $this->send($client,"".strlen($base));
+      $base = $base."a";
+    }
+  }
+
+// FIXME throw error if message length is longer than 0x7FFFFFFFFFFFFFFF chracters
+   function send($client,$data){
+    $this->say("> ".$data);
+
+
+    $header = " ";
+    $header[0] = chr(0x81);
+    $header_length = 1;
+    
+    //Payload length:  7 bits, 7+16 bits, or 7+64 bits
+    $dataLength = strlen($data);
+    
+    //The length of the payload data, in bytes: if 0-125, that is the payload length.  
+    if($dataLength <= 125)
+    {
+      $header[1] = chr($dataLength);
+      $header_length = 2;
+    }
+    elseif ($dataLength <= 65535)
+    {
+      // If 126, the following 2 bytes interpreted as a 16
+      // bit unsigned integer are the payload length. 
+    
+      $header[1] = chr(126);
+    	$header[2] = chr($dataLength >> 8);
+		  $header[3] = chr($dataLength & 0xFF);
+		  $header_length = 4;
+    }
+    else
+    {
+      // If 127, the following 8 bytes interpreted as a 64-bit unsigned integer (the 
+      // most significant bit MUST be 0) are the payload length. 
+      $header[1] = chr(127);
+      $header[2] = chr(($dataLength & 0xFF00000000000000) >> 56);
+      $header[3] = chr(($dataLength & 0xFF000000000000) >> 48);
+      $header[4] = chr(($dataLength & 0xFF0000000000) >> 40);
+      $header[5] = chr(($dataLength & 0xFF00000000) >> 32);
+      $header[6] = chr(($dataLength & 0xFF000000) >> 24);
+      $header[7] = chr(($dataLength & 0xFF0000) >> 16);
+      $header[8] = chr(($dataLength & 0xFF00 ) >> 8);
+      $header[9] = chr( $dataLength & 0xFF );
+      $header_length = 10;
+    }
+   
+    $result = socket_write($client, $header . $data, strlen($data) + $header_length);
+    //$result = socket_write($client, chr(0x81) . chr(strlen($data)) . $data, strlen($data) + 2);
+   if ( !$result ) {
+         $this->disconnect($client);
+         $client = false;
+    }
+    $this->say("len(".strlen($data).")");
+  }
 
   function connect($socket){
     $user = new User();
@@ -79,11 +145,11 @@ class WebSocket{
     $this->log($socket." DISCONNECTED!");
     if($index>=0){ array_splice($this->sockets,$index,1); }
   }
-
+  
   function dohandshake($user,$buffer){
     $this->log("\nRequesting handshake...");
     $this->log($buffer);
-    list($resource,$host,$origin,$key1,$key2,$l8b) = $this->getheaders($buffer);
+    list($resource,$host,$origin,$key1,$key2,$l8b,$key0) = $this->getheaders($buffer);
     $this->log("Handshaking...");
     //$port = explode(":",$host);
     //$port = $port[1];
@@ -91,40 +157,20 @@ class WebSocket{
     $upgrade  = "HTTP/1.1 101 WebSocket Protocol Handshake\r\n" .
                 "Upgrade: WebSocket\r\n" .
                 "Connection: Upgrade\r\n" .
-                                //"WebSocket-Origin: " . $origin . "\r\n" .
-                                //"WebSocket-Location: ws://" . $host . $resource . "\r\n" .
                 "Sec-WebSocket-Origin: " . $origin . "\r\n" .
-                    "Sec-WebSocket-Location: ws://" . $host . $resource . "\r\n" .
-                    //"Sec-WebSocket-Protocol: icbmgame\r\n" . //Client doesn't send this
-                "\r\n" .
-                    $this->calcKey($key1,$key2,$l8b) . "\r\n";// .
-                        //"\r\n";
-    socket_write($user->socket,$upgrade.chr(0),strlen($upgrade.chr(0)));
+                "Sec-WebSocket-Accept: " .  $this->calcKeyHybi10($key0) . "\r\n" . "\r\n" ;
+
+    socket_write($user->socket,$upgrade,strlen($upgrade));
     $user->handshake=true;
     $this->log($upgrade);
     $this->log("Done handshaking...");
     return true;
   }
-  
-  function calcKey($key1,$key2,$l8b){
-        //Get the numbers
-        preg_match_all('/([\d]+)/', $key1, $key1_num);
-        preg_match_all('/([\d]+)/', $key2, $key2_num);
-        //Number crunching [/bad pun]
-        $this->log("Key1: " . $key1_num = implode($key1_num[0]) );
-        $this->log("Key2: " . $key2_num = implode($key2_num[0]) );
-        //Count spaces
-        preg_match_all('/([ ]+)/', $key1, $key1_spc);
-        preg_match_all('/([ ]+)/', $key2, $key2_spc);
-        //How many spaces did it find?
-        $this->log("Key1 Spaces: " . $key1_spc = strlen(implode($key1_spc[0])) );
-        $this->log("Key2 Spaces: " . $key2_spc = strlen(implode($key2_spc[0])) );
-        if($key1_spc==0|$key2_spc==0){ $this->log("Invalid key");return; }
-        //Some math
-        $key1_sec = pack("N",$key1_num / $key1_spc); //Get the 32bit secret key, minus the other thing
-        $key2_sec = pack("N",$key2_num / $key2_spc);
-        //This needs checking, I'm not completely sure it should be a binary string
-        return md5($key1_sec.$key2_sec.$l8b,1); //The result, I think
+
+  function calcKeyHybi10($key){
+     $CRAZY = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+     $sha = sha1($key.$CRAZY,true);
+     return base64_encode($sha);
   }
   
   function getheaders($req){
@@ -134,8 +180,9 @@ class WebSocket{
     if(preg_match("/Origin: (.*)\r\n/"            ,$req,$match)){ $o=$match[1]; }
     if(preg_match("/Sec-WebSocket-Key1: (.*)\r\n/",$req,$match)){ $this->log("Sec Key1: ".$sk1=$match[1]); }
     if(preg_match("/Sec-WebSocket-Key2: (.*)\r\n/",$req,$match)){ $this->log("Sec Key2: ".$sk2=$match[1]); }
+    if(preg_match("/Sec-WebSocket-Key: (.*)\r\n/" ,$req,$match)){ $this->log("new Sec Key2: ".$sk0=$match[1]); }
     if($match=substr($req,-8))                                                                  { $this->log("Last 8 bytes: ".$l8b=$match); }
-    return array($r,$h,$o,$sk1,$sk2,$l8b);
+    return array($r,$h,$o,$sk1,$sk2,$l8b,$sk0);
   }
 
   function getuserbysocket($socket){
@@ -149,9 +196,62 @@ class WebSocket{
   function     say($msg=""){ echo $msg."\n"; }
   function     log($msg=""){ if($this->debug){ echo $msg."\n"; } }
   function    wrap($msg=""){ return chr(0).$msg.chr(255); }
-  function  unwrap($msg=""){ return substr($msg,1,strlen($msg)-2); }
 
-}
+  // copied from http://lemmingzshadow.net/386/php-websocket-serverclient-nach-draft-hybi-10/
+  function unwrap($data="")
+  {		
+  	$bytes = $data;
+  	$dataLength = '';
+  	$mask = '';
+  	$coded_data = '';
+  	$decodedData = '';
+  	$secondByte = sprintf('%08b', ord($bytes[1]));		
+  	$masked = ($secondByte[0] == '1') ? true : false;		
+  	$dataLength = ($masked === true) ? ord($bytes[1]) & 127 : ord($bytes[1]);
+  	if($masked === true)
+  	{
+  		if($dataLength === 126)
+  		{
+  		   $mask = substr($bytes, 4, 4);
+  		   $coded_data = substr($bytes, 8);
+  		}
+  		elseif($dataLength === 127)
+  		{
+  			$mask = substr($bytes, 10, 4);
+  			$coded_data = substr($bytes, 14);
+  		}
+  		else
+  		{
+  			$mask = substr($bytes, 2, 4);		
+  			$coded_data = substr($bytes, 6);		
+  		}	
+  		for($i = 0; $i < strlen($coded_data); $i++)
+  		{		
+  			$decodedData .= $coded_data[$i] ^ $mask[$i % 4];
+  		}
+  	}
+  	else
+  	{
+  		if($dataLength === 126)
+  		{		   
+  		   $decodedData = substr($bytes, 4);
+  		}
+  		elseif($dataLength === 127)
+  		{			
+  			$decodedData = substr($bytes, 10);
+  		}
+  		else
+  		{				
+  			$decodedData = substr($bytes, 2);		
+  		}		
+  	}
+ 
+	return $decodedData;
+  }
+  
+  
+
+} //class WebSocket
 
 class User{
   var $id;

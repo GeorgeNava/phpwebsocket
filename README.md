@@ -1,16 +1,10 @@
 PHPWEBSOCKET
 ============
 
-So here is a quick hack to implement websockets in php.  
-As of Feb/10 the only browsers that support websockets are [Google Chrome](http://www.google.com/chrome) and [Safari nightlies](http://nightly.webkit.org/)
+So here is a quick hack to implement hybi-10 websockets in php!  
+Check out the [hybi-10 standard here](http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-10#section-4.2)  
+Check [This Wikipedia Page](http://en.wikipedia.org/wiki/WebSocket#Browser_support) for suppored list of browsers.  
 
-
-Changelog
----------
-* 2010.02.18 - Chatbot demo extending websocket class
-* 2010.02.18 - Websocket class for better reuse
-* 2010.02.15 - Added Users list to keep track of handshakes
-* 2010.02.15 - Minor cosmetic changes
 
 Client side
 -----------
@@ -25,30 +19,19 @@ Client side
 	}
 	catch(ex){ log(ex); }
 
-View source code of [client.html](http://github.com/GeorgeNava/phpwebsocket/blob/master/client.html)
+View source code of [client.html](http://github.com/esromneb/phpwebsocket/blob/master/client.html)
 
 
 Server side
 -----------
 
-	log("Handshaking...");
-	list($resource,$host,$origin) = getheaders($buffer);
-	$upgrade = "HTTP/1.1 101 Web Socket Protocol Handshake\r\n" .
-			   "Upgrade: WebSocket\r\n" .
-			   "Connection: Upgrade\r\n" .
-			   "WebSocket-Origin: " . $origin . "\r\n" .
-			   "WebSocket-Location: ws://" . $host . $resource . "\r\n" .
-			   "\r\n";
-	$handshake = true;
-	socket_write($socket,$upgrade.chr(0),strlen($upgrade.chr(0)));
-
-View source code of [server.php](http://github.com/GeorgeNava/phpwebsocket/blob/master/server.php)
+  View source code of [chatbot.demo.php](http://github.com/esromneb/phpwebsocket/blob/master/chatbot.demo.php)
 
 Steps to run the test:
 ----------------------
-
-* Save both files, client.html and server.php, in a folder in your local server running Apache and PHP.
-* From the command line, run the server.php program to listen for socket connections.
+* [See these instructions](http://net.tutsplus.com/tutorials/javascript-ajax/start-using-html5-websockets-today/) for info on how to run this under windows ( xampp: Apache + PHP )
+* Save both files, client.html and chatbot.demo.php, in a folder in your local server running Apache and PHP.
+* From the command line, run the "php -q chatbot.demo.php" program to listen for socket connections.
 * Open Google Chrome and point to the client.html page
 * Done, your browser now has a full-duplex channel with the server.
 * Start sending commands to the server to get some responses.
@@ -56,10 +39,11 @@ Steps to run the test:
 WebSockets for the masses!
 ==========================
 
-Author
+Author  
 ------
-George Nava
+Ben Morse  
+George Nava  
 
-[http://georgenava.appspot.com](http://georgenava.appspot.com)  
-[http://mylittlehacks.appspot.com](http://mylittlehacks.appspot.com)  
-[http://twitter.com/georgenava](http://twitter.com/georgenava)  
+
+[http://portforwardpodcast.com/](http://portforwardpodcast.com/)  
+[http://twitter.com/PortFwdPodcast](http://twitter.com/PortFwdPodcast)  

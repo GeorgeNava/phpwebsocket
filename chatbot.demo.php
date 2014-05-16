@@ -21,5 +21,4 @@ class ChatBot extends WebSocket{
   }
 }
 
-$ws = new ChatBot("localhost",12345);
-$ws->listen();
+$master = new ChatBot("localhost",12345);
